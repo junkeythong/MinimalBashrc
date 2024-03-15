@@ -1,0 +1,2 @@
+# MinimalBashrc
+My minimal bashrc

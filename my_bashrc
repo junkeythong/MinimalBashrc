@@ -1,0 +1,149 @@
+# Define some useful aliases
+alias ..='cd ..'
+alias ...='cd ../..'
+alias lll='ls -la'
+alias gits='git status'
+alias gitl='git log --oneline'
+alias gitp='git pull'
+alias gitb='git branch'
+alias ns='kubectl get ns'
+alias cd1='cd /path/to/main_repo'
+alias cd2='cd /path/to/test_repo'
+
+# Move to Trash instead of rm
+alias rm='mv -t ~/.Trash'
+
+# Set the default namespace if not already set
+if [[ ! $KUBECTL_NS ]]; then
+    export KUBECTL_NS='FOO'
+fi
+export KUBECTL_NS_PARAM="--namespace $KUBECTL_NS"
+
+# Function to switch kubectl namespace
+kns()
+{
+    new_ns=$1
+    if [[ ! $new_ns ]]; then
+        # print old nanmespace if no new namespace is provided
+        echo "$KUBECTL_NS"
+        return 0
+    fi
+    # Check if the namespace exists
+    if kubectl get ns "$new_ns" > /dev/null 2>&1; then
+        export KUBECTL_NS="$new_ns"
+        export KUBECTL_NS_PARAM="--namespace $KUBECTL_NS"
+        alias k="kubectl $KUBECTL_NS_PARAM"
+        alias h="helm $KUBECTL_NS_PARAM"
+        echo "Switched to namespace: $KUBECTL_NS"
+    else
+        echo "Namespace $new_ns does not exist, still use: $KUBECTL_NS"
+    fi
+}
+
+# Function to switch kubeconfig
+ek()
+{
+    home_kube=~/.kube
+    new_kube=$1
+    if [[ ! $new_kube ]]; then
+        # print old context if no new kubeconfig is provided
+        echo "$KUBECONFIG"
+    elif [[ ! -f "$home_kube/$new_kube.yaml" ]]; then
+        echo "$home_kube/$new_kube.yaml does not exist, still use: $KUBECONFIG"
+    else
+        echo "Switched to $new_kube"
+        export KUBECONFIG="$home_kube/$new_kube.yaml"
+    fi
+}
+
+# Function to get the current git branch
+parse_git_branch() {
+    if [[ -d .git ]]; then
+        git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/'
+    else
+        # Echo empty string if not in a git repo directory
+        echo ""
+    fi
+}
+
+# Function to get the current k8s context
+get_k8s_context() {
+        kubectl config get-contexts --no-headers=true | grep '*' | awk -F ' ' '{print $2}'
+}
+
+get_last_commit_message() {
+    if [[ -d .git ]]; then
+        git log -1 --oneline | cut -d ' ' -f2-
+    else
+        # Echo empty string if not in a git repo directory
+        echo ""
+    fi
+}
+
+COL="\[\033[1;30m\]"
+RED="\[\e[01;31m\]"
+GREEN="\[\e[01;32m\]"
+YELLOW="\[\e[01;33m\]"
+BLUE="\[\e[01;34m\]"
+REVERSE_BLUE="\[\e[07;34m\]"
+PURPLE="\[\e[01;35m\]"
+CYAN="\[\e[01;36m\]"
+WHITE="\[\e[01;37m\]"
+BLINK_WHITE_ON_RED="\[\e[5m\e[41m\e[37m\]"
+ITALIC_GREEN="\[\e[03;32m\]"
+ITALIC_CYAN="\[\e[03;36m\]"
+DARK_GRAY="\[\e[01;30m\]"
+BRIGHT_YELLOW="\[\e[01;33\]"
+RESET="\[\e[0m\]"
+
+DEFAULT_CONTEXT="default_working_context"
+# Function to reload the prompt
+reload_ps() {
+    curr_config="$(get_k8s_context)"
+    curr_branch="$(parse_git_branch)"
+
+    if [[ "$curr_config" != "$DEFAULT_CONTEXT" ]] ; then
+        # Highlight the k8s context if it's not the default working context one
+        context_format="${REVERSE_BLUE}<\$(get_k8s_context)>${RESET}"
+    else
+        context_format="${BLUE}<\$(get_k8s_context)>${RESET}"
+    fi
+
+    if [[ "$curr_branch" == "(master)" ]] ; then
+        # Highlight the git branch if it's master as we should not work directly in master branch
+        branch_format="${BLINK_WHITE_ON_RED}\$(parse_git_branch)${RESET}"
+    else
+        branch_format="${ITALIC_GREEN}\$(parse_git_branch)${RESET}"
+    fi
+
+    # Even we set the FOO as default namespace, we still want to highlight it if it's the default namespace.
+    if [[ "$KUBECTL_NS" == "default" ]]; then
+        # Highlight the namespace if it's the default one
+        namespace_format="${BLINK_WHITE_ON_RED}(\$(kns))${RESET}"
+    else
+        namespace_format="${ITALIC_CYAN}(\$(kns))${RESET}"
+    fi
+
+    # Format for displaying the current time, helpful for debugging
+    time_format="${RED}(\t)${RESET}"
+    # Format for displaying the hostname, helpful when working with multiple hosts
+    host_format="${PURPLE}(\h)${RESET}"
+    # Format for displaying the current namespace, helpful when working with multiple namespaces
+    namespace_format="${CYAN}(\$(kns))${RESET}"
+    # Format for displaying the last commit message, avoid admend wrong commit
+    commit_message_format="${DARK_GRAY}(\$(get_last_commit_message))${RESET}"
+    # Format for displaying the current working directory
+    path_format="${WHITE}[\w]${RESET}"
+    # Format for displaying color of the command line
+    screen_format="${BRIGHT_YELLOW}\$(echo $STY)${RESET}"
+
+    PS1="$time_format$host_format$context_format$namespace_format$branch_format$commit_message_format$path_format$screen_format \n(っ◔◡◔)っ ♥ "
+    # Apply the color to the command line output
+    PS1="$PS1${COL}"
+}
+# Call the function to reload the prompt to get latest information
+PROMPT_COMMAND='reload_ps'
+
+# Using the default namespace and working directory here
+kns FOO
+cd your_default_workspace

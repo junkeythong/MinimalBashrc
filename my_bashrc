@@ -1,7 +1,7 @@
 # Define some useful aliases
 alias ..='cd ..'
 alias ...='cd ../..'
-alias lll='ls -la'
+alias ll='ls -la'
 alias gits='git status'
 alias gitl='git log --oneline'
 alias gitp='git pull'

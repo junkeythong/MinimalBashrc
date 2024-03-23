@@ -13,6 +13,10 @@ alias cd2='cd /path/to/test_repo'
 # Move to Trash instead of rm
 alias rm='mv -t ~/.Trash'
 
+DEFAULT_NS='FOO'
+if [[ ! kubectl get ns $DEFAULT_NS > /dev/null 2>&1 ]]; then
+    kubectl create ns $DEFAULT_NS > /dev/null 2>&1
+fi
 # Set the default namespace if not already set
 if [[ ! $KUBECTL_NS ]]; then
     export KUBECTL_NS='FOO'
@@ -145,5 +149,5 @@ reload_ps() {
 PROMPT_COMMAND='reload_ps'
 
 # Using the default namespace and working directory here
-kns FOO
-cd your_default_workspace
+kns $DEFAULT_NS
+cd1

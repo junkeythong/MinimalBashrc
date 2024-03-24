@@ -9,17 +9,19 @@ alias gitb='git branch'
 alias ns='kubectl get ns'
 alias cd1='cd /path/to/main_repo'
 alias cd2='cd /path/to/test_repo'
+alias editbash='vi /home/user/.bashrc'
+alias sourcebash='source /home/user/.bashrc'
 
-# Move to Trash instead of rm
+# Move to Trash instead of rm, use in Linux
 alias rm='mv -t ~/.Trash'
 
 DEFAULT_NS='FOO'
-if [[ ! kubectl get ns $DEFAULT_NS > /dev/null 2>&1 ]]; then
+if ! kubectl get ns $DEFAULT_NS > /dev/null 2>&1; then
     kubectl create ns $DEFAULT_NS > /dev/null 2>&1
 fi
 # Set the default namespace if not already set
 if [[ ! $KUBECTL_NS ]]; then
-    export KUBECTL_NS='FOO'
+    export KUBECTL_NS=$DEFAULT_NS
 fi
 export KUBECTL_NS_PARAM="--namespace $KUBECTL_NS"
 
@@ -113,7 +115,7 @@ reload_ps() {
         context_format="${BLUE}<\$(get_k8s_context)>${RESET}"
     fi
 
-    if [[ "$curr_branch" == "(master)" ]] ; then
+    if [[ "$curr_branch" == "(master)" ]] || [[ "$curr_branch" == "(main)" ]] ; then
         # Highlight the git branch if it's master as we should not work directly in master branch
         branch_format="${BLINK_WHITE_ON_RED}\$(parse_git_branch)${RESET}"
     else

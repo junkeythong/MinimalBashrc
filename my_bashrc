@@ -2,15 +2,6 @@
 alias ..='cd ..'
 alias ...='cd ../..'
 alias ll='ls -la'
-alias gits='git status'
-alias gitl='git log --oneline'
-alias gitp='git pull'
-alias gitb='git branch'
-alias ns='kubectl get ns'
-alias cd1='cd /path/to/main_repo'
-alias cd2='cd /path/to/test_repo'
-alias editbash='vi /home/user/.bashrc'
-alias sourcebash='source /home/user/.bashrc'
 
 # Move to Trash instead of rm, use in Linux
 alias rm='mv -t ~/.Trash'
@@ -24,6 +15,71 @@ if [[ ! $KUBECTL_NS ]]; then
     export KUBECTL_NS=$DEFAULT_NS
 fi
 export KUBECTL_NS_PARAM="--namespace $KUBECTL_NS"
+
+gits() {
+    git status "$@"
+}
+
+gitl() {
+    git log --oneline "$@"
+}
+
+gitp() {
+    git pull "$@"
+}
+
+gitb() {
+    git branch "$@"
+}
+
+gitc() {
+    git checkout "$@"
+}
+
+ns() {
+    kubectl get ns "$@"
+}
+
+pods() {
+    k get pods "$@"
+}
+
+cd1() {
+    cd /path/to/main_repo
+}
+
+cd2() {
+    cd /path/to/test_repo
+}
+
+editbash() {
+    vi /home/user/.bashrc
+}
+
+sourcebash() {
+    source /home/user/.bashrc
+}
+
+# Function to get the containers in a pod
+ctn()
+{
+    pod_name=$1
+    if [[ ! $pod_name ]]; then
+        echo "Please provide the pod name to get its containers!"
+        return 1
+    else
+        list_containers=$(k get pod "$pod_name" -o jsonpath='{.spec.containers[*].name}' 2>/dev/null)
+        if [[ ! $list_containers ]]; then
+            echo "Failed to get container list in Pod $pod_name!"
+            return 1
+        else
+            for container in $list_containers; do
+                echo $container
+            done
+        fi
+        echo
+    fi
+}
 
 # Function to switch kubectl namespace
 kns()
@@ -134,8 +190,6 @@ reload_ps() {
     time_format="${RED}(\t)${RESET}"
     # Format for displaying the hostname, helpful when working with multiple hosts
     host_format="${PURPLE}(\h)${RESET}"
-    # Format for displaying the current namespace, helpful when working with multiple namespaces
-    namespace_format="${CYAN}(\$(kns))${RESET}"
     # Format for displaying the last commit message, avoid admend wrong commit
     commit_message_format="${DARK_GRAY}(\$(get_last_commit_message))${RESET}"
     # Format for displaying the current working directory

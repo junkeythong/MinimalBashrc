@@ -120,8 +120,18 @@ ek()
 
 # Function to get the current git branch
 parse_git_branch() {
-    if [[ -d .git ]]; then
+    if git rev-parse --is-inside-word-tree > /dev/null 2>&1; then
         git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/'
+    else
+        # Echo empty string if not in a git repo directory
+        echo ""
+    fi
+}
+
+# Function to get the last commit message
+get_last_commit_message() {
+    if git rev-parse --is-inside-word-tree > /dev/null 2>&1; then
+        git log -1 --oneline | cut -d ' ' -f2-
     else
         # Echo empty string if not in a git repo directory
         echo ""
@@ -131,15 +141,6 @@ parse_git_branch() {
 # Function to get the current k8s context
 get_k8s_context() {
         kubectl config get-contexts --no-headers=true | grep '*' | awk -F ' ' '{print $2}'
-}
-
-get_last_commit_message() {
-    if [[ -d .git ]]; then
-        git log -1 --oneline | cut -d ' ' -f2-
-    else
-        # Echo empty string if not in a git repo directory
-        echo ""
-    fi
 }
 
 COL="\[\033[1;30m\]"

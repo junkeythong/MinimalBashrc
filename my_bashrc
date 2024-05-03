@@ -41,7 +41,7 @@ ns() {
 }
 
 pods() {
-    k get pods "$@"
+    kubectl get pods $KUBECTL_NS_PARAM "$@"
 }
 
 cd1() {
@@ -68,7 +68,7 @@ ctn()
         echo "Please provide the pod name to get its containers!"
         return 1
     else
-        list_containers=$(k get pod "$pod_name" -o jsonpath='{.spec.containers[*].name}' 2>/dev/null)
+        list_containers=$(kubectl get pod "$pod_name" -o jsonpath='{.spec.initContainers[*].name}{"\n"}{.spec.containers[*].name}' 2>/dev/null)
         if [[ ! $list_containers ]]; then
             echo "Failed to get container list in Pod $pod_name!"
             return 1

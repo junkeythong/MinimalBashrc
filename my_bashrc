@@ -5,11 +5,21 @@ alias ll='ls -la'
 
 # Move to Trash instead of rm, use in Linux
 alias rm='mv -t ~/.Trash'
-
 DEFAULT_NS='FOO'
-if ! kubectl get ns $DEFAULT_NS > /dev/null 2>&1; then
-    kubectl create ns $DEFAULT_NS > /dev/null 2>&1
+if ! command -v kubectl > /dev/null 2>&1; then
+    echo "Kubernetes is not installed. Skipping namespace creation."
+else
+    if ! kubectl get ns $DEFAULT_NS > /dev/null 2>&1; then
+        if kubectl create ns $DEFAULT_NS > /dev/null 2>&1; then
+            echo "Namespace $DEFAULT_NS created successfully."
+        else
+            echo "Failed to create namespace $DEFAULT_NS."
+        fi
+    else
+        echo "Namespace $DEFAULT_NS already exists."
+    fi
 fi
+
 # Set the default namespace if not already set
 if [[ ! $KUBECTL_NS ]]; then
     export KUBECTL_NS=$DEFAULT_NS
@@ -40,7 +50,7 @@ ns() {
     kubectl get ns "$@"
 }
 
-pods() {
+po() {
     kubectl get pods $KUBECTL_NS_PARAM "$@"
 }
 
@@ -84,12 +94,19 @@ ctn()
 # Function to switch kubectl namespace
 kns()
 {
+    # Check if Kubernetes is installed
+    if ! command -v kubectl > /dev/null 2>&1; then
+        echo "Kubernetes is not installed. Cannot switch namespace."
+        return 1
+    fi
+
     new_ns=$1
     if [[ ! $new_ns ]]; then
-        # print old nanmespace if no new namespace is provided
+        # print old namespace if no new namespace is provided
         echo "$KUBECTL_NS"
         return 0
     fi
+
     # Check if the namespace exists
     if kubectl get ns "$new_ns" > /dev/null 2>&1; then
         export KUBECTL_NS="$new_ns"
@@ -98,7 +115,7 @@ kns()
         alias h="helm $KUBECTL_NS_PARAM"
         echo "Switched to namespace: $KUBECTL_NS"
     else
-        echo "Namespace $new_ns does not exist, still use: $KUBECTL_NS"
+        echo "Namespace $new_ns does not exist, still using: $KUBECTL_NS"
     fi
 }
 

@@ -6,8 +6,9 @@ alias ll='ls -la'
 # Move to Trash instead of rm, use in Linux
 alias rm='mv -t ~/.Trash'
 DEFAULT_NS='FOO'
-if ! command -v kubectl > /dev/null 2>&1; then
-    echo "Kubernetes is not installed. Skipping namespace creation."
+
+if ! kubectl cluster-info > /dev/null 2>&1; then
+    echo "Cannot connect to the cluster. Skipping namespace creation."
 else
     if ! kubectl get ns $DEFAULT_NS > /dev/null 2>&1; then
         if kubectl create ns $DEFAULT_NS > /dev/null 2>&1; then
@@ -94,17 +95,17 @@ ctn()
 # Function to switch kubectl namespace
 kns()
 {
-    # Check if Kubernetes is installed
-    if ! command -v kubectl > /dev/null 2>&1; then
-        echo "Kubernetes is not installed. Cannot switch namespace."
-        return 1
-    fi
-
     new_ns=$1
     if [[ ! $new_ns ]]; then
         # print old namespace if no new namespace is provided
         echo "$KUBECTL_NS"
         return 0
+    fi
+
+    # Check if we can connect to the cluster
+    if ! kubectl cluster-info > /dev/null 2>&1; then
+        echo "Cannot connect to the cluster. Cannot switch namespace."
+        return 1
     fi
 
     # Check if the namespace exists

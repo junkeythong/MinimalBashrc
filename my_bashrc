@@ -47,6 +47,14 @@ gitc() {
     git checkout "$@"
 }
 
+gitchanges() {
+    git log -1 --name-only --pretty=format: | grep -E '^[A-Za-z0-9_./-]+$'
+}
+
+gitadment() {
+    git commit --amend --no-edit
+}
+
 ns() {
     kubectl get ns "$@"
 }

@@ -1,3 +1,6 @@
+# Export some cool env
+# export KUBECONFIG, PATH
+
 # Define some useful aliases
 alias ..='cd ..'
 alias ...='cd ../..'
@@ -23,24 +26,29 @@ fi
 
 # Set the default namespace if not already set
 if [[ ! $KUBECTL_NS ]]; then
-    export KUBECTL_NS=$DEFAULT_NS
+    export KUBECTL_NS="$DEFAULT_NS"
 fi
 export KUBECTL_NS_PARAM="--namespace $KUBECTL_NS"
 
-gits() {
-    git status "$@"
+# Should be update submodule also
+gitp() {
+    git pull "$@" && git submodule update
 }
 
 gitl() {
     git log --oneline "$@"
 }
 
-gitp() {
-    git pull "$@"
+gits() {
+    git status "$@"
 }
 
 gitb() {
     git branch "$@"
+}
+
+gitpush() {
+    git push "$@"
 }
 
 gitc() {
@@ -48,15 +56,16 @@ gitc() {
 }
 
 gitchanges() {
-    git log -1 --name-only --pretty=format: | grep -E '^[A-Za-z0-9_./-]+$'
+    git log -1 --name-only --pretty=format:"" | cat -v
 }
 
-gitadment() {
+gitamend() {
     git commit --amend --no-edit
 }
 
+# By sorting the time creation, we easily check new namespace
 ns() {
-    kubectl get ns "$@"
+    kubectl get ns "$@" --sort-by=.metadata.creationTimestamp
 }
 
 po() {
@@ -126,6 +135,11 @@ kns()
     else
         echo "Namespace $new_ns does not exist, still using: $KUBECTL_NS"
     fi
+}
+
+# Sometimes we need to clone a current repo to a test repo
+reposync() {
+    rsync -aPv /your/main-repo /your/test-repo
 }
 
 # Function to switch kubeconfig

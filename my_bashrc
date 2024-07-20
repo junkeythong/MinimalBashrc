@@ -89,14 +89,13 @@ sourcebash() {
 }
 
 # Function to get the containers in a pod
-ctn()
-{
+ctn() {
     pod_name=$1
     if [[ ! $pod_name ]]; then
         echo "Please provide the pod name to get its containers!"
         return 1
     else
-        list_containers=$(k get pod "$pod_name" -o jsonpath='{.spec.initContainers[*].name}{"\n"}{.spec.containers[*].name}' KUBECTL_NS_PARAM 2>/dev/null)
+        list_containers=$(k get pod "$pod_name" -o jsonpath='{.spec.initContainers[*].name}{"\n"}{.spec.containers[*].name}' $KUBECTL_NS_PARAM 2>/dev/null)
         if [[ ! $list_containers ]]; then
             echo "Failed to get container list in Pod $pod_name!"
             return 1
@@ -110,8 +109,7 @@ ctn()
 }
 
 # Function to switch kubectl namespace
-kns()
-{
+kns() {
     new_ns=$1
     if [[ ! $new_ns ]]; then
         # print old namespace if no new namespace is provided
@@ -122,6 +120,7 @@ kns()
     # Check if we can connect to the cluster
     if ! kubectl cluster-info > /dev/null 2>&1; then
         echo "Cannot connect to the cluster. Cannot switch namespace."
+    # Apply the color to the command line output
         return 1
     fi
 
@@ -143,8 +142,7 @@ reposync() {
 }
 
 # Function to switch kubeconfig
-ek()
-{
+ek() {
     home_kube=~/.kube
     new_kube=$1
     if [[ ! $new_kube ]]; then
@@ -183,7 +181,7 @@ get_k8s_context() {
         kubectl config get-contexts --no-headers=true | grep '*' | awk -F ' ' '{print $2}'
 }
 
-COL="\[\033[1;30m\]"
+COL="\[\e[1;30m\]"
 RED="\[\e[01;31m\]"
 GREEN="\[\e[01;32m\]"
 YELLOW="\[\e[01;33m\]"
@@ -196,7 +194,7 @@ BLINK_WHITE_ON_RED="\[\e[5m\e[41m\e[37m\]"
 ITALIC_GREEN="\[\e[03;32m\]"
 ITALIC_CYAN="\[\e[03;36m\]"
 DARK_GRAY="\[\e[01;30m\]"
-BRIGHT_YELLOW="\[\e[01;33\]"
+BRIGHT_YELLOW="\[\e[01;33m\]"
 RESET="\[\e[0m\]"
 
 DEFAULT_CONTEXT="default_working_context"
@@ -205,14 +203,14 @@ reload_ps() {
     curr_config="$(get_k8s_context)"
     curr_branch="$(parse_git_branch)"
 
-    if [[ "$curr_config" != "$DEFAULT_CONTEXT" ]] ; then
+    if [[ "$curr_config" != "$DEFAULT_CONTEXT" ]]; then
         # Highlight the k8s context if it's not the default working context one
         context_format="${REVERSE_BLUE}<\$(get_k8s_context)>${RESET}"
     else
         context_format="${BLUE}<\$(get_k8s_context)>${RESET}"
     fi
 
-    if [[ "$curr_branch" == "(master)" ]] || [[ "$curr_branch" == "(main)" ]] ; then
+    if [[ "$curr_branch" == "(master)" ]] || [[ "$curr_branch" == "(main)" ]]; then
         # Highlight the git branch if it's master as we should not work directly in master branch
         branch_format="${BLINK_WHITE_ON_RED}\$(parse_git_branch)${RESET}"
     else
@@ -236,11 +234,9 @@ reload_ps() {
     # Format for displaying the current working directory
     path_format="${WHITE}[\w]${RESET}"
     # Format for displaying color of the command line
-    screen_format="${BRIGHT_YELLOW}\$(echo $STY)${RESET}"
+    screen_format="${BRIGHT_YELLOW}\$(echo \$STY)${RESET}"
 
-    PS1="$time_format$host_format$context_format$namespace_format$branch_format$commit_message_format$path_format$screen_format \n(っ◔◡◔)っ ♥ "
-    # Apply the color to the command line output
-    PS1="$PS1${COL}"
+    PS1="${time_format}${host_format}${context_format}${namespace_format}${branch_format}${commit_message_format}${path_format}${screen_format} \n--> ${COL}"
 }
 # Call the function to reload the prompt to get latest information
 PROMPT_COMMAND='reload_ps'

@@ -6,9 +6,12 @@ alias ..='cd ..'
 alias ...='cd ../..'
 alias ll='ls -la'
 
-# Move to Trash instead of rm, use in Linux
+# Move to Trash instead of rm, use in Linux.
+# Trash can be cleaned up periodically by cron job. 
 alias rm='mv -t ~/.Trash'
-DEFAULT_NS='FOO'
+
+# Set working namespace by default, 'default' namespace should not be used.
+DEFAULT_NS='default_working_ns'
 
 if ! kubectl cluster-info > /dev/null 2>&1; then
     echo "Cannot connect to the cluster. Skipping namespace creation."
@@ -20,11 +23,11 @@ else
             echo "Failed to create namespace $DEFAULT_NS."
         fi
     else
-        echo "Namespace $DEFAULT_NS already exists."
+        echo "Namespace $DEFAULT_NS already exists. Skipped"
     fi
 fi
 
-# Set the default namespace if not already set
+# Set the namespace option for kubectl command if not already set
 if [[ ! $KUBECTL_NS ]]; then
     export KUBECTL_NS="$DEFAULT_NS"
 fi
@@ -55,10 +58,12 @@ gitc() {
     git checkout "$@"
 }
 
+# Get the list of modified files in the current commit
 gitchanges() {
     git log -1 --name-only --pretty=format:"" | cat -v
 }
 
+# Quick amend the changes to the current commit
 gitamend() {
     git commit --amend --no-edit
 }
@@ -72,18 +77,22 @@ po() {
     kubectl get pods $KUBECTL_NS_PARAM "$@"
 }
 
+# Quick go to working directory
 cd1() {
     cd /path/to/main_repo
 }
 
+# Quick go to testing directory
 cd2() {
     cd /path/to/test_repo
 }
 
+# Quick edit bashrc
 editbash() {
     vi /home/user/.bashrc
 }
 
+# Quick source the bashrc
 sourcebash() {
     source /home/user/.bashrc
 }
@@ -112,7 +121,7 @@ ctn() {
 kns() {
     new_ns=$1
     if [[ ! $new_ns ]]; then
-        # print old namespace if no new namespace is provided
+        # print current namespace if no new namespace is provided
         echo "$KUBECTL_NS"
         return 0
     fi
@@ -124,7 +133,7 @@ kns() {
         return 1
     fi
 
-    # Check if the namespace exists
+    # Check if new namespace exists
     if kubectl get ns "$new_ns" > /dev/null 2>&1; then
         export KUBECTL_NS="$new_ns"
         export KUBECTL_NS_PARAM="--namespace $KUBECTL_NS"
@@ -136,17 +145,17 @@ kns() {
     fi
 }
 
-# Sometimes we need to clone a current repo to a test repo
+# Quick clone the working directory to the test directory
 reposync() {
     rsync -aPv /your/main-repo /your/test-repo
 }
 
-# Function to switch kubeconfig
+# Function to switch kubeconfig if we are working multiple cluster as the same time.
 ek() {
     home_kube=~/.kube
     new_kube=$1
     if [[ ! $new_kube ]]; then
-        # print old context if no new kubeconfig is provided
+        # print current context if no new kubeconfig is provided
         echo "$KUBECONFIG"
     elif [[ ! -f "$home_kube/$new_kube.yaml" ]]; then
         echo "$home_kube/$new_kube.yaml does not exist, still use: $KUBECONFIG"
@@ -166,7 +175,7 @@ parse_git_branch() {
     fi
 }
 
-# Function to get the last commit message
+# Function to show the last commit message to avoid amend wrong commit
 get_last_commit_message() {
     if git rev-parse --is-inside-word-tree > /dev/null 2>&1; then
         git log -1 --oneline | cut -d ' ' -f2-
@@ -176,7 +185,7 @@ get_last_commit_message() {
     fi
 }
 
-# Function to get the current k8s context
+# Function to show the current k8s context
 get_k8s_context() {
         kubectl config get-contexts --no-headers=true | grep '*' | awk -F ' ' '{print $2}'
 }
@@ -204,20 +213,20 @@ reload_ps() {
     curr_branch="$(parse_git_branch)"
 
     if [[ "$curr_config" != "$DEFAULT_CONTEXT" ]]; then
-        # Highlight the k8s context if it's not the default working context one
+        # Highlight the k8s context if it's not the default working context
         context_format="${REVERSE_BLUE}<\$(get_k8s_context)>${RESET}"
     else
         context_format="${BLUE}<\$(get_k8s_context)>${RESET}"
     fi
 
     if [[ "$curr_branch" == "(master)" ]] || [[ "$curr_branch" == "(main)" ]]; then
-        # Highlight the git branch if it's master as we should not work directly in master branch
+        # Highlight the git branch if it's master branch as we should not work directly in master branch
         branch_format="${BLINK_WHITE_ON_RED}\$(parse_git_branch)${RESET}"
     else
         branch_format="${ITALIC_GREEN}\$(parse_git_branch)${RESET}"
     fi
 
-    # Even we set the FOO as default namespace, we still want to highlight it if it's the default namespace.
+    # Highlight it if it's the 'default' namespace.
     if [[ "$KUBECTL_NS" == "default" ]]; then
         # Highlight the namespace if it's the default one
         namespace_format="${BLINK_WHITE_ON_RED}(\$(kns))${RESET}"
@@ -229,18 +238,20 @@ reload_ps() {
     time_format="${RED}(\t)${RESET}"
     # Format for displaying the hostname, helpful when working with multiple hosts
     host_format="${PURPLE}(\h)${RESET}"
-    # Format for displaying the last commit message, avoid admend wrong commit
+    # Format for displaying the last commit message, avoid amend wrong commit
     commit_message_format="${DARK_GRAY}(\$(get_last_commit_message))${RESET}"
     # Format for displaying the current working directory
     path_format="${WHITE}[\w]${RESET}"
     # Format for displaying color of the command line
     screen_format="${BRIGHT_YELLOW}\$(echo \$STY)${RESET}"
 
+    # Final PS1
     PS1="${time_format}${host_format}${context_format}${namespace_format}${branch_format}${commit_message_format}${path_format}${screen_format} \n--> ${COL}"
 }
-# Call the function to reload the prompt to get latest information
+# Call the function to reload the prompt to get latest information every new line
 PROMPT_COMMAND='reload_ps'
 
 # Using the default namespace and working directory here
+# But should be turned off in ssh automation.
 kns $DEFAULT_NS
 cd1

@@ -5,6 +5,9 @@
 alias ..='cd ..'
 alias ...='cd ../..'
 alias ll='ls -la'
+alias cp='cp --interactive'
+alias mv='mv --interactive'
+alias rm='rm --interactive'
 
 # Move to Trash instead of rm, use in Linux.
 # Trash can be cleaned up periodically by cron job. 
@@ -23,11 +26,11 @@ else
             echo "Failed to create namespace $DEFAULT_NS."
         fi
     else
-        echo "Namespace $DEFAULT_NS already exists. Skipped"
+        echo "Default namespace $DEFAULT_NS already exists. Skipping creation."
     fi
 fi
 
-# Set the namespace option for kubectl command if not already set
+# Set the default namespace if not already set
 if [[ ! $KUBECTL_NS ]]; then
     export KUBECTL_NS="$DEFAULT_NS"
 fi
@@ -167,7 +170,7 @@ ek() {
 
 # Function to get the current git branch
 parse_git_branch() {
-    if git rev-parse --is-inside-word-tree > /dev/null 2>&1; then
+    if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
         git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/'
     else
         # Echo empty string if not in a git repo directory
@@ -177,7 +180,7 @@ parse_git_branch() {
 
 # Function to show the last commit message to avoid amend wrong commit
 get_last_commit_message() {
-    if git rev-parse --is-inside-word-tree > /dev/null 2>&1; then
+    if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
         git log -1 --oneline | cut -d ' ' -f2-
     else
         # Echo empty string if not in a git repo directory
@@ -188,6 +191,39 @@ get_last_commit_message() {
 # Function to show the current k8s context
 get_k8s_context() {
         kubectl config get-contexts --no-headers=true | grep '*' | awk -F ' ' '{print $2}'
+}
+
+headsgit() {
+    if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+        echo "Not inside a Git repo"
+        return 1
+    fi
+    local branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "(detached HEAD)")
+    local remote="origin"
+
+    echo "Current LOCAL branch: $branch"
+    local format="%C(auto)%h %an %ad %s"
+    local local_head=$(git --no-pager show -s --format="$format" HEAD)
+    local fetch_head="(No FETCH_HEAD - run 'git fetch')"
+    if [ -f .git/FETCH_HEAD ]; then
+        fetch_head=$(git --no-pager show -s --format="$format" FETCH_HEAD 2>/dev/null)
+    fi
+    git fetch $remote $branch &>/dev/null
+    local remote_head="Remote branch: $remote/$branch not found"
+    if git rev-parse --verify "$remote/$branch" &>/dev/null; then
+        remote_head=$(git --no-pager show -s --format="$format" "$remote/$branch")
+    fi
+
+    printf "%-13s %s\n" "LOCAL HEAD:" "$local_head"
+    printf "%-13s %s\n" "FETCH HEAD:" "$fetch_head"
+    printf "%-13s %s\n" "REMOTE HEAD:" "$remote_head"
+
+   echo "Remote branches:"
+   git branch -r --format="%(refname:short)" | sort
+}
+
+get_btc_price() {
+    curl -s https://api.coinbase.com/v2/prices/BTC-USD/spot | jq -r '.data.amount'
 }
 
 COL="\[\e[1;30m\]"
@@ -234,6 +270,8 @@ reload_ps() {
         namespace_format="${ITALIC_CYAN}(\$(kns))${RESET}"
     fi
 
+    # Format for BTC price
+    btc_format="${GREEN}(\$(get_btc_price))${RESET}"
     # Format for displaying the current time, helpful for debugging
     time_format="${RED}(\t)${RESET}"
     # Format for displaying the hostname, helpful when working with multiple hosts
@@ -246,7 +284,7 @@ reload_ps() {
     screen_format="${BRIGHT_YELLOW}\$(echo \$STY)${RESET}"
 
     # Final PS1
-    PS1="${time_format}${host_format}${context_format}${namespace_format}${branch_format}${commit_message_format}${path_format}${screen_format} \n--> ${COL}"
+    PS1="${btc_format}${time_format}${host_format}${context_format}${namespace_format}${branch_format}${commit_message_format}${path_format}${screen_format} \n--> ${COL}"
 }
 # Call the function to reload the prompt to get latest information every new line
 PROMPT_COMMAND='reload_ps'

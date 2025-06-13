@@ -282,9 +282,11 @@ reload_ps() {
     path_format="${WHITE}[\w]${RESET}"
     # Format for displaying color of the command line
     screen_format="${BRIGHT_YELLOW}\$(echo \$STY)${RESET}"
+    # Tag name, local or VPS or something
+    tag_format="${BLINK_WHITE_ON_RED}<local>${RESET}"
 
     # Final PS1
-    PS1="${btc_format}${time_format}${host_format}${context_format}${namespace_format}${branch_format}${commit_message_format}${path_format}${screen_format} \n--> ${COL}"
+    PS1="${tag_format}${btc_format}${time_format}${host_format}${context_format}${namespace_format}${branch_format}${commit_message_format}${path_format}${screen_format} \n--> ${COL}"
 }
 # Call the function to reload the prompt to get latest information every new line
 PROMPT_COMMAND='reload_ps'

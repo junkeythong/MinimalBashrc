@@ -8,3 +8,4 @@ I'm the type of person who doesn't like fancy or redundant things. Here is my st
 
 Demo from my terminal on MacOS:
 <p align="center"><img src="terminal_output.png" alt="terminal output image"></p>
+<p align="center"><img src="terminal_output-2.png" alt="terminal output image"></p>

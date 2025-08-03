@@ -8,8 +8,7 @@ Here is my streamlined bashrc file containing only the things I really need and 
 - Please get rid of anything you feel is unnecessary.
 
 Demo from my terminal on MacOS:
-Terminal 1:
 <p align="center"><img src="terminal_output.png" alt="terminal output image"></p>
 
-Terminal 2:
+Another terminal:
 <p align="center"><img src="terminal_output-2.png" alt="terminal output image"></p>

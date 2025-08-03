@@ -226,6 +226,13 @@ get_btc_price() {
     curl -s https://api.coinbase.com/v2/prices/BTC-USD/spot | jq -r '.data.amount'
 }
 
+docker_count() {
+  docker ps -q 2>/dev/null | wc -l
+}
+screen_count() {
+  screen -ls | awk '/[0-9]+\./ {c++} END{print c+0}'
+}
+
 COL="\[\e[1;30m\]"
 RED="\[\e[01;31m\]"
 GREEN="\[\e[01;32m\]"
@@ -282,11 +289,13 @@ reload_ps() {
     path_format="${WHITE}[\w]${RESET}"
     # Format for displaying color of the command line
     screen_format="${BRIGHT_YELLOW}\$(echo \$STY)${RESET}"
-    # Tag name, local or VPS or something
+    # Tag server name, local or VPS or something
     tag_format="${BLINK_WHITE_ON_RED}<local>${RESET}"
+    # Docker - screen count
+    docker_screen_count_format="${WHITE}[containers:\$(docker_count) screens:\$(screen_count)]${RESET}"
 
     # Final PS1
-    PS1="${tag_format}${btc_format}${time_format}${host_format}${context_format}${namespace_format}${branch_format}${commit_message_format}${path_format}${screen_format} \n--> ${COL}"
+    PS1="${tag_format}${btc_format}${docker_screen_count_format}${time_format}${host_format}${context_format}${namespace_format}${branch_format}${commit_message_format}${path_format}${screen_format} \n--> ${COL}"
 }
 # Call the function to reload the prompt to get latest information every new line
 PROMPT_COMMAND='reload_ps'

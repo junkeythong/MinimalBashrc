@@ -2,10 +2,7 @@
 
 I'm the type of person who doesn't like fancy or redundant things.
 Here is my streamlined bashrc file containing only the things I really need and nothing else.
-- I use Bash on Linux, need to rework it a bit for zshrc or on MacOS.
-- The color is set based on my terminal light theme and needs to be reworked for personal terminal context.
-- Many functions like gits, kns, ctn which I defined to use it directly
-- Please get rid of anything you feel is unnecessary.
+Please get rid of anything you feel is unnecessary.
 
 ## 🚀 Key Features
 
@@ -91,15 +88,6 @@ gitl                # git log --oneline
 # Safe operations
 cp, mv, rm          # Interactive mode by default
 ```
-
-## 🎨 Prompt Features
-
-The dynamic prompt provides visual cues for:
-- **⚠️ Dangerous branches**: Master/main branches blink red
-- **⚠️ Default namespace**: Highlighted to prevent accidental usage
-- **🔄 Context switching**: Non-default k8s contexts are highlighted
-- **📍 Location awareness**: Different indicators for SSH vs local
-- **📊 System status**: Live container and session counts
 
 ## 🔧 Installation & Setup
 

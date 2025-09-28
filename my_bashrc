@@ -1,238 +1,22 @@
-# Export some cool env
-# export KUBECONFIG, PATH
+# ============================================================================
+# ENVIRONMENT VARIABLES
+# ============================================================================
 
-# Define some useful aliases
-alias ..='cd ..'
-alias ...='cd ../..'
-alias ll='ls -la'
-alias cp='cp --interactive'
-alias mv='mv --interactive'
-alias rm='rm --interactive'
+# Kubernetes Configuration
+export DEFAULT_NS='default_working_ns'
+export DEFAULT_CONTEXT="default_working_context"
 
-# Move to Trash instead of rm, use in Linux.
-# Trash can be cleaned up periodically by cron job. 
-alias rm='mv -t ~/.Trash'
-
-# Set working namespace by default, 'default' namespace should not be used.
-DEFAULT_NS='default_working_ns'
-
-if ! kubectl cluster-info > /dev/null 2>&1; then
-    echo "Cannot connect to the cluster. Skipping namespace creation."
-else
-    if ! kubectl get ns $DEFAULT_NS > /dev/null 2>&1; then
-        if kubectl create ns $DEFAULT_NS > /dev/null 2>&1; then
-            echo "Namespace $DEFAULT_NS created successfully."
-        else
-            echo "Failed to create namespace $DEFAULT_NS."
-        fi
-    else
-        echo "Default namespace $DEFAULT_NS already exists. Skipping creation."
-    fi
-fi
-
-# Set the default namespace if not already set
+# Set kubectl namespace if not already set
 if [[ ! $KUBECTL_NS ]]; then
     export KUBECTL_NS="$DEFAULT_NS"
 fi
 export KUBECTL_NS_PARAM="--namespace $KUBECTL_NS"
 
-# Should be update submodule also
-gitp() {
-    git pull "$@" && git submodule update
-}
+# ============================================================================
+# COLOR DEFINITIONS
+# ============================================================================
 
-gitl() {
-    git log --oneline "$@"
-}
-
-gits() {
-    git status "$@"
-}
-
-gitb() {
-    git branch "$@"
-}
-
-gitpush() {
-    git push "$@"
-}
-
-gitc() {
-    git checkout "$@"
-}
-
-# Get the list of modified files in the current commit
-gitchanges() {
-    git log -1 --name-only --pretty=format:"" | cat -v
-}
-
-# Quick amend the changes to the current commit
-gitamend() {
-    git commit --amend --no-edit
-}
-
-# By sorting the time creation, we easily check new namespace
-ns() {
-    kubectl get ns "$@" --sort-by=.metadata.creationTimestamp
-}
-
-po() {
-    kubectl get pods $KUBECTL_NS_PARAM "$@"
-}
-
-# Quick go to working directory
-cd1() {
-    cd /path/to/main_repo
-}
-
-# Quick go to testing directory
-cd2() {
-    cd /path/to/test_repo
-}
-
-# Quick edit bashrc
-editbash() {
-    vi /home/user/.bashrc
-}
-
-# Quick source the bashrc
-sourcebash() {
-    source /home/user/.bashrc
-}
-
-# Function to get the containers in a pod
-ctn() {
-    pod_name=$1
-    if [[ ! $pod_name ]]; then
-        echo "Please provide the pod name to get its containers!"
-        return 1
-    else
-        list_containers=$(k get pod "$pod_name" -o jsonpath='{.spec.initContainers[*].name}{"\n"}{.spec.containers[*].name}' $KUBECTL_NS_PARAM 2>/dev/null)
-        if [[ ! $list_containers ]]; then
-            echo "Failed to get container list in Pod $pod_name!"
-            return 1
-        else
-            for container in $list_containers; do
-                echo $container
-            done
-        fi
-        echo
-    fi
-}
-
-# Function to switch kubectl namespace
-kns() {
-    new_ns=$1
-    if [[ ! $new_ns ]]; then
-        # print current namespace if no new namespace is provided
-        echo "$KUBECTL_NS"
-        return 0
-    fi
-
-    # Check if we can connect to the cluster
-    if ! kubectl cluster-info > /dev/null 2>&1; then
-        echo "Cannot connect to the cluster. Cannot switch namespace."
-    # Apply the color to the command line output
-        return 1
-    fi
-
-    # Check if new namespace exists
-    if kubectl get ns "$new_ns" > /dev/null 2>&1; then
-        export KUBECTL_NS="$new_ns"
-        export KUBECTL_NS_PARAM="--namespace $KUBECTL_NS"
-        alias k="kubectl $KUBECTL_NS_PARAM"
-        alias h="helm $KUBECTL_NS_PARAM"
-        echo "Switched to namespace: $KUBECTL_NS"
-    else
-        echo "Namespace $new_ns does not exist, still using: $KUBECTL_NS"
-    fi
-}
-
-# Quick clone the working directory to the test directory
-reposync() {
-    rsync -aPv /your/main-repo /your/test-repo
-}
-
-# Function to switch kubeconfig if we are working multiple cluster as the same time.
-ek() {
-    home_kube=~/.kube
-    new_kube=$1
-    if [[ ! $new_kube ]]; then
-        # print current context if no new kubeconfig is provided
-        echo "$KUBECONFIG"
-    elif [[ ! -f "$home_kube/$new_kube.yaml" ]]; then
-        echo "$home_kube/$new_kube.yaml does not exist, still use: $KUBECONFIG"
-    else
-        echo "Switched to $new_kube"
-        export KUBECONFIG="$home_kube/$new_kube.yaml"
-    fi
-}
-
-# Function to get the current git branch
-parse_git_branch() {
-    if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
-        git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/'
-    else
-        # Echo empty string if not in a git repo directory
-        echo ""
-    fi
-}
-
-# Function to show the last commit message to avoid amend wrong commit
-get_last_commit_message() {
-    if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
-        git log -1 --oneline | cut -d ' ' -f2-
-    else
-        # Echo empty string if not in a git repo directory
-        echo ""
-    fi
-}
-
-# Function to show the current k8s context
-get_k8s_context() {
-        kubectl config get-contexts --no-headers=true | grep '*' | awk -F ' ' '{print $2}'
-}
-
-headsgit() {
-    if ! git rev-parse --is-inside-work-tree &>/dev/null; then
-        echo "Not inside a Git repo"
-        return 1
-    fi
-    local branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "(detached HEAD)")
-    local remote="origin"
-
-    echo "Current LOCAL branch: $branch"
-    local format="%C(auto)%h %an %ad %s"
-    local local_head=$(git --no-pager show -s --format="$format" HEAD)
-    local fetch_head="(No FETCH_HEAD - run 'git fetch')"
-    if [ -f .git/FETCH_HEAD ]; then
-        fetch_head=$(git --no-pager show -s --format="$format" FETCH_HEAD 2>/dev/null)
-    fi
-    git fetch $remote $branch &>/dev/null
-    local remote_head="Remote branch: $remote/$branch not found"
-    if git rev-parse --verify "$remote/$branch" &>/dev/null; then
-        remote_head=$(git --no-pager show -s --format="$format" "$remote/$branch")
-    fi
-
-    printf "%-13s %s\n" "LOCAL HEAD:" "$local_head"
-    printf "%-13s %s\n" "FETCH HEAD:" "$fetch_head"
-    printf "%-13s %s\n" "REMOTE HEAD:" "$remote_head"
-
-   echo "Remote branches:"
-   git branch -r --format="%(refname:short)" | sort
-}
-
-get_btc_price() {
-    curl -s https://api.coinbase.com/v2/prices/BTC-USD/spot | jq -r '.data.amount'
-}
-
-docker_count() {
-  docker ps -q 2>/dev/null | wc -l
-}
-screen_count() {
-  screen -ls | awk '/[0-9]+\./ {c++} END{print c+0}'
-}
-
+# Terminal colors for prompt customization
 COL="\[\e[1;30m\]"
 RED="\[\e[01;31m\]"
 GREEN="\[\e[01;32m\]"
@@ -249,62 +33,332 @@ DARK_GRAY="\[\e[01;30m\]"
 BRIGHT_YELLOW="\[\e[01;33m\]"
 RESET="\[\e[0m\]"
 
-DEFAULT_CONTEXT="default_working_context"
-# Function to reload the prompt
-reload_ps() {
-    curr_config="$(get_k8s_context)"
-    curr_branch="$(parse_git_branch)"
+# ============================================================================
+# BASIC ALIASES
+# ============================================================================
 
+# Navigation shortcuts
+alias ..='cd ..'
+alias ...='cd ../..'
+
+# Enhanced ls
+alias ll='ls -la'
+alias la='ls -A'
+alias l='ls -CF'
+
+# Safe file operations (interactive mode)
+alias cp='cp --interactive'
+alias mv='mv --interactive'
+alias rm='rm --interactive'
+
+# Alternative: Move to Trash instead of rm (Linux)
+# Uncomment the line below if you prefer trash over rm
+# alias rm='mv -t ~/.Trash'
+
+# ============================================================================
+# GIT ALIASES AND FUNCTIONS
+# ============================================================================
+
+# Git shortcuts
+alias gits='git status'
+alias gitb='git branch'
+alias gitc='git checkout'
+alias gitl='git log --oneline'
+
+# Git pull with submodule update
+gitp() {
+    git pull "$@" && git submodule update --init --recursive
+}
+
+# Git push wrapper
+gitpush() {
+    git push "$@"
+}
+
+# Get modified files in current commit
+gitchanges() {
+    git log -1 --name-only --pretty=format:"" | grep -v '^$'
+}
+
+# Quick amend to current commit
+gitamend() {
+    git commit --amend --no-edit
+}
+
+# Compare local, fetch, and remote heads
+headsgit() {
+    if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+        echo "Not inside a Git repository"
+        return 1
+    fi
+
+    local branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "(detached HEAD)")
+    local remote="origin"
+    local format="%C(auto)%h %an %ad %s"
+
+    echo "Current LOCAL branch: $branch"
+
+    # Fetch latest changes
+    git fetch $remote $branch &>/dev/null
+
+    # Display commit information
+    local local_head=$(git --no-pager show -s --format="$format" HEAD)
+    local fetch_head="(No FETCH_HEAD - run 'git fetch')"
+
+    if [ -f .git/FETCH_HEAD ]; then
+        fetch_head=$(git --no-pager show -s --format="$format" FETCH_HEAD 2>/dev/null)
+    fi
+
+    local remote_head="Remote branch: $remote/$branch not found"
+    if git rev-parse --verify "$remote/$branch" &>/dev/null; then
+        remote_head=$(git --no-pager show -s --format="$format" "$remote/$branch")
+    fi
+
+    printf "%-13s %s\n" "LOCAL HEAD:" "$local_head"
+    printf "%-13s %s\n" "FETCH HEAD:" "$fetch_head"
+    printf "%-13s %s\n" "REMOTE HEAD:" "$remote_head"
+
+    echo "Remote branches:"
+    git branch -r --format="%(refname:short)" | sort
+}
+
+# ============================================================================
+# KUBERNETES FUNCTIONS
+# ============================================================================
+
+# List namespaces sorted by creation time
+ns() {
+    kubectl get ns "$@" --sort-by=.metadata.creationTimestamp
+}
+
+# List pods in current namespace
+po() {
+    kubectl get pods $KUBECTL_NS_PARAM "$@"
+}
+
+# Get containers in a pod
+ctn() {
+    local pod_name=$1
+    if [[ ! $pod_name ]]; then
+        echo "Usage: ctn <pod_name>"
+        echo "Gets all containers in the specified pod"
+        return 1
+    fi
+
+    local list_containers=$(kubectl get pod "$pod_name" -o jsonpath='{.spec.initContainers[*].name}{"\n"}{.spec.containers[*].name}' $KUBECTL_NS_PARAM 2>/dev/null)
+
+    if [[ ! $list_containers ]]; then
+        echo "Failed to get container list in Pod $pod_name!"
+        return 1
+    fi
+
+    echo "Containers in pod $pod_name:"
+    for container in $list_containers; do
+        echo "  - $container"
+    done
+}
+
+# Switch kubectl namespace
+kns() {
+    local new_ns=$1
+
+    # Show current namespace if no argument provided
+    if [[ ! $new_ns ]]; then
+        echo "Current namespace: $KUBECTL_NS"
+        return 0
+    fi
+
+    # Check cluster connectivity
+    if ! kubectl cluster-info > /dev/null 2>&1; then
+        echo "Cannot connect to the cluster. Cannot switch namespace."
+        return 1
+    fi
+
+    # Check if namespace exists
+    if kubectl get ns "$new_ns" > /dev/null 2>&1; then
+        export KUBECTL_NS="$new_ns"
+        export KUBECTL_NS_PARAM="--namespace $KUBECTL_NS"
+        alias k="kubectl $KUBECTL_NS_PARAM"
+        alias h="helm $KUBECTL_NS_PARAM"
+        echo "Switched to namespace: $KUBECTL_NS"
+    else
+        echo "Namespace $new_ns does not exist. Current namespace: $KUBECTL_NS"
+    fi
+}
+
+# Switch kubeconfig for multiple clusters
+ek() {
+    local home_kube=~/.kube
+    local new_kube=$1
+
+    if [[ ! $new_kube ]]; then
+        echo "Current kubeconfig: $KUBECONFIG"
+        echo "Available configs:"
+        ls -1 "$home_kube"/*.yaml 2>/dev/null | xargs -n1 basename | sed 's/.yaml$//'
+        return 0
+    fi
+
+    if [[ ! -f "$home_kube/$new_kube.yaml" ]]; then
+        echo "$home_kube/$new_kube.yaml does not exist"
+        echo "Current kubeconfig: $KUBECONFIG"
+        return 1
+    fi
+
+    export KUBECONFIG="$home_kube/$new_kube.yaml"
+    echo "Switched to kubeconfig: $new_kube"
+}
+
+# ============================================================================
+# UTILITY FUNCTIONS
+# ============================================================================
+
+# Quick directory navigation (customize paths as needed)
+cd1() {
+    cd /path/to/main_repo || echo "Path /path/to/main_repo not found"
+}
+
+cd2() {
+    cd /path/to/test_repo || echo "Path /path/to/test_repo not found"
+}
+
+# Quick bashrc editing and sourcing
+editbash() {
+    ${EDITOR:-vi} ~/.bashrc
+}
+
+sourcebash() {
+    source ~/.bashrc
+    echo "Bashrc reloaded"
+}
+
+# Sync repositories
+reposync() {
+    local source="/your/main-repo"
+    local dest="/your/test-repo"
+
+    if [[ ! -d "$source" ]]; then
+        echo "Source directory $source not found"
+        return 1
+    fi
+
+    rsync -aPv "$source/" "$dest/"
+    echo "Repository sync completed"
+}
+
+# Get Bitcoin price
+get_btc_price() {
+    curl -s https://api.coinbase.com/v2/prices/BTC-USD/spot | jq -r '.data.amount' 2>/dev/null || echo "N/A"
+}
+
+# Count running Docker containers
+docker_count() {
+    docker ps -q 2>/dev/null | wc -l | tr -d ' '
+}
+
+# Count active screen sessions
+screen_count() {
+    screen -ls 2>/dev/null | awk '/[0-9]+\./ {c++} END{print c+0}'
+}
+
+# ============================================================================
+# PROMPT HELPER FUNCTIONS
+# ============================================================================
+
+# Get current git branch
+parse_git_branch() {
+    if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+        git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/'
+    fi
+}
+
+# Get last commit message
+get_last_commit_message() {
+    if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+        git log -1 --oneline | cut -d ' ' -f2-
+    fi
+}
+
+# Get current Kubernetes context
+get_k8s_context() {
+    kubectl config get-contexts --no-headers=true 2>/dev/null | grep '*' | awk '{print $2}' || echo "N/A"
+}
+
+# ============================================================================
+# KUBERNETES INITIALIZATION
+# ============================================================================
+
+# Initialize default namespace if connected to cluster
+if kubectl cluster-info > /dev/null 2>&1; then
+    if ! kubectl get ns $DEFAULT_NS > /dev/null 2>&1; then
+        if kubectl create ns $DEFAULT_NS > /dev/null 2>&1; then
+            echo "Namespace $DEFAULT_NS created successfully."
+        else
+            echo "Failed to create namespace $DEFAULT_NS."
+        fi
+    fi
+else
+    echo "Cannot connect to Kubernetes cluster. Skipping namespace initialization."
+fi
+
+# ============================================================================
+# CUSTOM PROMPT CONFIGURATION
+# ============================================================================
+
+# Dynamic prompt reload function
+reload_ps() {
+    local curr_config="$(get_k8s_context)"
+    local curr_branch="$(parse_git_branch)"
+
+    # Kubernetes context formatting
     if [[ "$curr_config" != "$DEFAULT_CONTEXT" ]]; then
-        # Highlight the k8s context if it's not the default working context
         context_format="${REVERSE_BLUE}<\$(get_k8s_context)>${RESET}"
     else
         context_format="${BLUE}<\$(get_k8s_context)>${RESET}"
     fi
 
+    # Git branch formatting (highlight master/main branches)
     if [[ "$curr_branch" == "(master)" ]] || [[ "$curr_branch" == "(main)" ]]; then
-        # Highlight the git branch if it's master branch as we should not work directly in master branch
         branch_format="${BLINK_WHITE_ON_RED}\$(parse_git_branch)${RESET}"
     else
         branch_format="${ITALIC_GREEN}\$(parse_git_branch)${RESET}"
     fi
 
-    # Highlight it if it's the 'default' namespace.
+    # Namespace formatting (highlight default namespace)
     if [[ "$KUBECTL_NS" == "default" ]]; then
-        # Highlight the namespace if it's the default one
         namespace_format="${BLINK_WHITE_ON_RED}(\$(kns))${RESET}"
     else
         namespace_format="${ITALIC_CYAN}(\$(kns))${RESET}"
     fi
 
-    # Format for BTC price
-    btc_format="${GREEN}(\$(get_btc_price))${RESET}"
-    # Format for displaying the current time, helpful for debugging
-    time_format="${RED}(\t)${RESET}"
-    # Format for displaying the hostname, helpful when working with multiple hosts
-    host_format="${PURPLE}(\h)${RESET}"
-    # Format for displaying the last commit message, avoid amend wrong commit
-    commit_message_format="${DARK_GRAY}(\$(get_last_commit_message))${RESET}"
-    # Format for displaying the current working directory
-    path_format="${WHITE}[\w]${RESET}"
-    # Format for displaying color of the command line
-    screen_format="${BRIGHT_YELLOW}\$(echo \$STY)${RESET}"
-    # SSH indicator
-    if [[ -n "$SSH_CLIENT" || -n "$SSH_CONNECTION" ]]; then
-        whereami_format="🌐 ${RED}VPS${RESET}"
-    else
-        whereami_format="💻 ${GREEN}Local${RESET}"
-    fi
-    # Docker - screen count
-    docker_screen_count_format="${WHITE}[containers:\$(docker_count) screens:\$(screen_count)]${RESET}"
+    # Additional prompt components
+    local btc_format="${GREEN}(\$(get_btc_price))${RESET}"
+    local time_format="${RED}(\t)${RESET}"
+    local host_format="${PURPLE}(\h)${RESET}"
+    local commit_message_format="${DARK_GRAY}(\$(get_last_commit_message))${RESET}"
+    local path_format="${WHITE}[\w]${RESET}"
+    local screen_format="${BRIGHT_YELLOW}\$(echo \$STY)${RESET}"
 
-    # Final PS1
+    # SSH/Local indicator
+    if [[ -n "$SSH_CLIENT" || -n "$SSH_CONNECTION" ]]; then
+        local whereami_format="🌐 ${RED}VPS${RESET}"
+    else
+        local whereami_format="💻 ${GREEN}Local${RESET}"
+    fi
+
+    # Docker and screen count
+    local docker_screen_count_format="${WHITE}[containers:\$(docker_count) screens:\$(screen_count)]${RESET}"
+
+    # Construct final PS1
     PS1="${whereami_format}${btc_format}${docker_screen_count_format}${time_format}${host_format}${context_format}${namespace_format}${branch_format}${commit_message_format}${path_format}${screen_format} \n--> ${COL}"
 }
-# Call the function to reload the prompt to get latest information every new line
+
+# Set prompt command to reload on each command
 PROMPT_COMMAND='reload_ps'
 
-# Using the default namespace and working directory here
-# But should be turned off in ssh automation.
-kns $DEFAULT_NS
-cd1
+# ============================================================================
+# INITIALIZATION
+# ============================================================================
+
+# Set default namespace and navigate to main directory
+kns $DEFAULT_NS 2>/dev/null
+cd1 2>/dev/null

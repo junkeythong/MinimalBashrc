@@ -61,7 +61,7 @@ headsgit            # Compare local/remote/fetch heads
 
 ### Utility Functions
 ```bash
-reposync            # Sync main repo to test repo
+reposync [--delete] # Sync main repo to test repo (optionally delete missing files)
 cd1                 # Navigate to main repository
 cd2                 # Navigate to test repository
 editbash            # Edit bashrc file
@@ -101,18 +101,17 @@ cp, mv, rm          # Interactive mode by default
    cp my_bashrc ~/.bashrc
    ```
 
-3. **Customize paths** (edit these in the file):
+3. **Customize paths and sync settings** (edit these in the file):
    ```bash
    # Update these paths to match your setup
    cd1() { cd /path/to/main_repo; }
    cd2() { cd /path/to/test_repo; }
 
-   # Update repository sync paths
-   reposync() {
-       local source="/your/main-repo"
-       local dest="/your/test-repo"
-       # ...
-   }
+   # Repository sync configuration
+   LOCAL_REPO="/your/main-repo"
+   REMOTE_REPO="/path/on/remote/host"
+   HOST="user@hostname"
+   SYNC_EXCLUDES=( ".git" "__pycache__" ".venv" )
    ```
 
 4. **Set your default context**:

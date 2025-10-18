@@ -12,6 +12,11 @@ if [[ ! $KUBECTL_NS ]]; then
 fi
 export KUBECTL_NS_PARAM="--namespace $KUBECTL_NS"
 
+LOCAL_REPO="local-repo-dir"
+REMOTE_REPO="remote-repo-dir"
+SYNC_EXCLUDES=( ".git" "__pycache__" ".venv" )
+HOST="user@hostname"
+
 # ============================================================================
 # COLOR DEFINITIONS
 # ============================================================================
@@ -233,15 +238,28 @@ sourcebash() {
 
 # Sync repositories
 reposync() {
-    local source="/your/main-repo"
-    local dest="/your/test-repo"
-
-    if [[ ! -d "$source" ]]; then
-        echo "Source directory $source not found"
+    if [[ ! -d "$LOCAL_REPO" ]]; then
+        echo "Source directory $LOCAL_REPO not found"
+        return 1
+    fi
+    if [[ -z "$HOST" || -z "$REMOTE_REPO" ]]; then
+        echo "HOST and REMOTE_REPO must be configured before running reposync"
         return 1
     fi
 
-    rsync -aPv "$source/" "$dest/"
+    local exclude_args=()
+    for pat in "${SYNC_EXCLUDES[@]}"; do
+        exclude_args+=(--exclude "$pat")
+    done
+
+    local del_flag=""
+    [[ "$1" == "--delete" ]] && del_flag="--delete"
+
+    echo "Syncing $LOCAL_REPO -> $HOST:$REMOTE_REPO"
+    # if the remote OS is different than local OS, convert EOL first, suppose it is a LINUX
+    find "$LOCAL_REPO" -type f -exec dos2unix {} + 2>/dev/null
+
+    rsync -aPzv ${del_flag} "${exclude_args[@]}" "$LOCAL_REPO/" "$HOST:$REMOTE_REPO/"
     echo "Repository sync completed"
 }
 

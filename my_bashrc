@@ -278,6 +278,14 @@ screen_count() {
     screen -ls 2>/dev/null | awk '/[0-9]+\./ {c++} END{print c+0}'
 }
 
+pyenv_prompt() {
+    local venv_name=""
+    local py_ver=""
+    [[ -n "$VIRTUAL_ENV" ]] && venv_name=$(basename "$VIRTUAL_ENV")
+    py_ver=$((python3 --version) 2>/dev/null | awk '{print $2}')
+    [[ -n "$venv_name" ]] && echo "${venv_name}:py${py_ver}" || echo "py${py_ver}"
+}
+
 # ============================================================================
 # PROMPT HELPER FUNCTIONS
 # ============================================================================
@@ -355,10 +363,11 @@ reload_ps() {
     local commit_message_format="${DARK_GRAY}(\$(get_last_commit_message))${RESET}"
     local path_format="${WHITE}[\w]${RESET}"
     local screen_format="${BRIGHT_YELLOW}\$(echo \$STY)${RESET}"
+    local pyenv_format="${PURPLE}(\$(pyenv_prompt))${RESET}"
 
     # SSH/Local indicator
     if [[ -n "$SSH_CLIENT" || -n "$SSH_CONNECTION" ]]; then
-        local whereami_format="🌐 ${RED}VPS${RESET}"
+        local whereami_format="🌐 ${RED}Server${RESET}"
     else
         local whereami_format="💻 ${GREEN}Local${RESET}"
     fi
@@ -367,7 +376,7 @@ reload_ps() {
     local docker_screen_count_format="${WHITE}[containers:\$(docker_count) screens:\$(screen_count)]${RESET}"
 
     # Construct final PS1
-    PS1="${whereami_format}${btc_format}${docker_screen_count_format}${time_format}${host_format}${context_format}${namespace_format}${branch_format}${commit_message_format}${path_format}${screen_format} \n--> ${COL}"
+    PS1="${whereami_format}${pyenv_format}${btc_format}${docker_screen_count_format}${time_format}${host_format}${context_format}${namespace_format}${branch_format}${commit_message_format}${path_format}${screen_format} \n--> ${COL}"
 }
 
 # Set prompt command to reload on each command

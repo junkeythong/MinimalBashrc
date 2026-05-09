@@ -10,7 +10,7 @@ Please get rid of anything you feel is unnecessary.
 - **Namespace Management**: `kns` function for easy namespace switching
 - **Multi-cluster Support**: `ek` function for kubeconfig switching
 - **Pod Utilities**: `ctn` for container inspection, `po` for pod listing
-- **Auto-initialization**: Creates default working namespace on startup
+- **On-demand initialization**: `kinit_ns` creates the default working namespace when requested
 - **Safety Features**: Highlights dangerous default namespace usage
 
 ### 🔧 **Git Enhancements**
@@ -23,7 +23,7 @@ Please get rid of anything you feel is unnecessary.
 ### 🎨 **Intelligent Prompt**
 The custom prompt displays contextual information:
 - 🌐/💻 **Location indicator** (VPS/Local)
-- 💰 **Bitcoin price** (because why not?)
+- 💰 **Bitcoin price** (cached with short network timeouts)
 - 📊 **System stats** (Docker containers, screen sessions)
 - ⏰ **Timestamp** for debugging
 - 🖥️ **Hostname** for multi-server workflows
@@ -44,6 +44,7 @@ The custom prompt displays contextual information:
 ### Kubernetes Functions
 ```bash
 kns [namespace]     # Switch to namespace or show current
+kinit_ns            # Create DEFAULT_NS in the current cluster if needed
 ek [config]         # Switch kubeconfig or show current
 ctn <pod_name>      # List all containers in a pod
 ns [args]           # List namespaces by creation time
@@ -86,7 +87,7 @@ gitc                # git checkout
 gitl                # git log --oneline
 
 # Safe operations
-cp, mv, rm          # Interactive mode by default
+cp, mv, rm          # Interactive mode by default (-i)
 ```
 
 ## 🔧 Installation & Setup
@@ -123,6 +124,11 @@ cp, mv, rm          # Interactive mode by default
 5. **Reload your shell**:
    ```bash
    source ~/.bashrc
+   ```
+
+6. **Optional: create your default Kubernetes namespace**:
+   ```bash
+   kinit_ns
    ```
 
 ## 🖥️ Terminal Screenshots
@@ -164,10 +170,11 @@ Feel free to suggest improvements or report issues. This configuration prioritiz
 ## 📝 Notes
 
 - Colors are optimized for light terminal themes
-- Bitcoin price requires `curl` and `jq`
+- Bitcoin price requires `curl` and `jq`; failures return `N/A` or the last cached value
 - Kubernetes functions require `kubectl`
 - Some functions assume specific directory structures
 - The prompt updates dynamically on each command
+- Sourcing the file is passive: it does not create Kubernetes resources or change directories
 
 ---
 

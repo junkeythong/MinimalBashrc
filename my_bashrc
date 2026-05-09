@@ -52,9 +52,9 @@ alias la='ls -A'
 alias l='ls -CF'
 
 # Safe file operations (interactive mode)
-alias cp='cp --interactive'
-alias mv='mv --interactive'
-alias rm='rm --interactive'
+alias cp='cp -i'
+alias mv='mv -i'
+alias rm='rm -i'
 
 # Alternative: Move to Trash instead of rm (Linux)
 # Uncomment the line below if you prefer trash over rm
@@ -69,6 +69,10 @@ alias gits='git status'
 alias gitb='git branch'
 alias gitc='git checkout'
 alias gitl='git log --oneline'
+
+# Kubernetes shortcuts
+alias k="kubectl $KUBECTL_NS_PARAM"
+alias h="helm $KUBECTL_NS_PARAM"
 
 # Git pull with submodule update
 gitp() {
@@ -138,7 +142,7 @@ ns() {
 
 # List pods in current namespace
 po() {
-    kubectl get pods $KUBECTL_NS_PARAM "$@"
+    kubectl get pods ${KUBECTL_NS_PARAM} "$@"
 }
 
 # Get containers in a pod
@@ -150,7 +154,8 @@ ctn() {
         return 1
     fi
 
-    local list_containers=$(kubectl get pod "$pod_name" -o jsonpath='{.spec.initContainers[*].name}{"\n"}{.spec.containers[*].name}' $KUBECTL_NS_PARAM 2>/dev/null)
+    local list_containers
+    list_containers=$(kubectl get pod "$pod_name" -o jsonpath='{.spec.initContainers[*].name}{"\n"}{.spec.containers[*].name}' ${KUBECTL_NS_PARAM} 2>/dev/null)
 
     if [[ ! $list_containers ]]; then
         echo "Failed to get container list in Pod $pod_name!"
@@ -199,7 +204,12 @@ ek() {
     if [[ ! $new_kube ]]; then
         echo "Current kubeconfig: $KUBECONFIG"
         echo "Available configs:"
-        ls -1 "$home_kube"/*.yaml 2>/dev/null | xargs -n1 basename | sed 's/.yaml$//'
+        local configs=("$home_kube"/*.yaml)
+        local config
+        for config in "${configs[@]}"; do
+            [[ -e "$config" ]] || continue
+            basename "${config%.yaml}"
+        done
         return 0
     fi
 
@@ -236,6 +246,26 @@ sourcebash() {
     echo "Bashrc reloaded"
 }
 
+# Create the default Kubernetes namespace on demand
+kinit_ns() {
+    if ! kubectl cluster-info > /dev/null 2>&1; then
+        echo "Cannot connect to Kubernetes cluster. Skipping namespace initialization."
+        return 1
+    fi
+
+    if kubectl get ns "$DEFAULT_NS" > /dev/null 2>&1; then
+        echo "Namespace $DEFAULT_NS already exists."
+        return 0
+    fi
+
+    if kubectl create ns "$DEFAULT_NS" > /dev/null 2>&1; then
+        echo "Namespace $DEFAULT_NS created successfully."
+    else
+        echo "Failed to create namespace $DEFAULT_NS."
+        return 1
+    fi
+}
+
 # Sync repositories
 reposync() {
     if [[ ! -d "$LOCAL_REPO" ]]; then
@@ -256,8 +286,6 @@ reposync() {
     [[ "$1" == "--delete" ]] && del_flag="--delete"
 
     echo "Syncing $LOCAL_REPO -> $HOST:$REMOTE_REPO"
-    # if the remote OS is different than local OS, convert EOL first, suppose it is a LINUX
-    find "$LOCAL_REPO" -type f -exec dos2unix {} + 2>/dev/null
 
     rsync -aPzv ${del_flag} "${exclude_args[@]}" "$LOCAL_REPO/" "$HOST:$REMOTE_REPO/"
     echo "Repository sync completed"
@@ -265,7 +293,28 @@ reposync() {
 
 # Get Bitcoin price
 get_btc_price() {
-    curl -s https://api.coinbase.com/v2/prices/BTC-USD/spot | jq -r '.data.amount' 2>/dev/null || echo "N/A"
+    local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}"
+    local cache_file="$cache_dir/minimalbashrc-btc-price"
+    local cache_ttl=300
+    local now cached_at cached_price price
+
+    now=$(date +%s)
+    if [[ -r "$cache_file" ]]; then
+        read -r cached_at cached_price < "$cache_file"
+        if [[ "$cached_at" =~ ^[0-9]+$ ]] && ((now - cached_at < cache_ttl)); then
+            echo "$cached_price"
+            return 0
+        fi
+    fi
+
+    price=$(curl --connect-timeout 1 --max-time 2 -fsS https://api.coinbase.com/v2/prices/BTC-USD/spot 2>/dev/null | jq -r '.data.amount // empty' 2>/dev/null)
+    if [[ -n "$price" ]]; then
+        mkdir -p "$cache_dir" 2>/dev/null
+        printf '%s %s\n' "$now" "$price" > "$cache_file" 2>/dev/null
+        echo "$price"
+    else
+        echo "${cached_price:-N/A}"
+    fi
 }
 
 # Count running Docker containers
@@ -308,23 +357,6 @@ get_last_commit_message() {
 get_k8s_context() {
     kubectl config get-contexts --no-headers=true 2>/dev/null | grep '*' | awk '{print $2}' || echo "N/A"
 }
-
-# ============================================================================
-# KUBERNETES INITIALIZATION
-# ============================================================================
-
-# Initialize default namespace if connected to cluster
-if kubectl cluster-info > /dev/null 2>&1; then
-    if ! kubectl get ns $DEFAULT_NS > /dev/null 2>&1; then
-        if kubectl create ns $DEFAULT_NS > /dev/null 2>&1; then
-            echo "Namespace $DEFAULT_NS created successfully."
-        else
-            echo "Failed to create namespace $DEFAULT_NS."
-        fi
-    fi
-else
-    echo "Cannot connect to Kubernetes cluster. Skipping namespace initialization."
-fi
 
 # ============================================================================
 # CUSTOM PROMPT CONFIGURATION
@@ -386,6 +418,4 @@ PROMPT_COMMAND='reload_ps'
 # INITIALIZATION
 # ============================================================================
 
-# Set default namespace and navigate to main directory
-kns $DEFAULT_NS 2>/dev/null
-cd1 2>/dev/null
+# Source-time behavior is intentionally passive: no cluster writes and no directory changes.

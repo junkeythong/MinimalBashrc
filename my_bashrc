@@ -17,6 +17,10 @@ REMOTE_REPO="remote-repo-dir"
 SYNC_EXCLUDES=( ".git" "__pycache__" ".venv" )
 HOST="user@hostname"
 
+# Centralized per-project Python virtualenvs
+export WORKON_HOME="${WORKON_HOME:-$HOME/.venvs}"
+export VIRTUAL_ENV_DISABLE_PROMPT=1
+
 # ============================================================================
 # COLOR DEFINITIONS
 # ============================================================================
@@ -246,6 +250,109 @@ sourcebash() {
     echo "Bashrc reloaded"
 }
 
+# Build the central venv name from an explicit argument or the current folder.
+_central_venv_name() {
+    local name="${1:-$(basename "$PWD")}"
+    name="${name// /-}"
+    printf '%s\n' "$name"
+}
+
+central_venv_path() {
+    local name
+    name="$(_central_venv_name "$1")"
+    printf '%s/%s\n' "$WORKON_HOME" "$name"
+}
+
+create_central_venv() {
+    local name target
+    name="$(_central_venv_name "$1")"
+    target="$(central_venv_path "$name")"
+
+    mkdir -p "$WORKON_HOME"
+    if [[ ! -d "$target" ]]; then
+        python3 -m venv "$target" || return
+    fi
+
+    source "$target/bin/activate"
+    echo "Using venv: $target"
+}
+
+activate_central_venv() {
+    local target
+
+    if [[ -z "$1" ]]; then
+        list_central_venvs
+        return
+    fi
+
+    target="$(central_venv_path "$1")"
+    if [[ ! -d "$target" ]]; then
+        echo "No central venv found: $target"
+        return 1
+    fi
+
+    source "$target/bin/activate"
+    echo "Using venv: $target"
+}
+
+list_central_venvs() {
+    if [[ ! -d "$WORKON_HOME" ]]; then
+        return
+    fi
+
+    local venv
+    for venv in "$WORKON_HOME"/*; do
+        [[ -d "$venv" ]] || continue
+        basename "$venv"
+    done | sort
+}
+
+_current_workspace_project_name() {
+    if [[ "$PWD" != "$HOME/"* ]]; then
+        return 1
+    fi
+
+    local relative_path="${PWD#$HOME/}"
+    if [[ -z "$relative_path" || "$relative_path" == "$PWD" ]]; then
+        return 1
+    fi
+
+    printf '%s\n' "${relative_path%%/*}"
+}
+
+auto_activate_central_venv() {
+    local project_name target
+
+    if [[ -n "$VIRTUAL_ENV" && "$CENTRAL_VENV_AUTO_ACTIVATED" != "1" ]]; then
+        return
+    fi
+
+    if ! project_name="$(_current_workspace_project_name)"; then
+        if [[ "$CENTRAL_VENV_AUTO_ACTIVATED" == "1" ]]; then
+            deactivate 2>/dev/null || true
+            unset CENTRAL_VENV_AUTO_ACTIVATED
+        fi
+        return
+    fi
+
+    target="$(central_venv_path "$project_name")"
+    if [[ ! -f "$target/bin/activate" ]]; then
+        if [[ "$CENTRAL_VENV_AUTO_ACTIVATED" == "1" ]]; then
+            deactivate 2>/dev/null || true
+            unset CENTRAL_VENV_AUTO_ACTIVATED
+        fi
+        return
+    fi
+
+    if [[ "$VIRTUAL_ENV" != "$target" ]]; then
+        if [[ "$CENTRAL_VENV_AUTO_ACTIVATED" == "1" ]]; then
+            deactivate 2>/dev/null || true
+        fi
+        source "$target/bin/activate"
+        export CENTRAL_VENV_AUTO_ACTIVATED=1
+    fi
+}
+
 # Create the default Kubernetes namespace on demand
 kinit_ns() {
     if ! kubectl cluster-info > /dev/null 2>&1; then
@@ -411,8 +518,8 @@ reload_ps() {
     PS1="${whereami_format}${pyenv_format}${btc_format}${docker_screen_count_format}${time_format}${host_format}${context_format}${namespace_format}${branch_format}${commit_message_format}${path_format}${screen_format} \n--> ${COL}"
 }
 
-# Set prompt command to reload on each command
-PROMPT_COMMAND='reload_ps'
+# Set prompt command to activate central venvs and reload on each command
+PROMPT_COMMAND='auto_activate_central_venv; reload_ps'
 
 # ============================================================================
 # INITIALIZATION

@@ -93,8 +93,120 @@ STUB
     ' || fail "reposync should not run dos2unix against source files"
 }
 
+test_central_venv_helpers_create_activate_and_list() {
+    with_temp_env '
+        cat > "$TEST_TMPDIR/bin/python3" <<STUB
+#!/usr/bin/env bash
+if [[ "\$1" == "--version" ]]; then
+    echo "Python 3.12.0"
+    exit 0
+fi
+if [[ "\$1" == "-m" && "\$2" == "venv" ]]; then
+    target="\$3"
+    mkdir -p "\$target/bin"
+    cat > "\$target/bin/activate" <<ACTIVATE
+VIRTUAL_ENV="\$target"
+export VIRTUAL_ENV
+deactivate() {
+    unset VIRTUAL_ENV
+    unset CENTRAL_VENV_AUTO_ACTIVATED
+    unset -f deactivate
+}
+ACTIVATE
+    exit 0
+fi
+exit 1
+STUB
+        chmod +x "$TEST_TMPDIR/bin/python3"
+
+        mkdir -p "$HOME/project-one"
+        source "$BASHRC" >/dev/null 2>&1
+
+        cd "$HOME/project-one"
+        create_central_venv >/dev/null
+        [[ "$VIRTUAL_ENV" == "$HOME/.venvs/project-one" ]] || exit 1
+        [[ "$(central_venv_path project-one)" == "$HOME/.venvs/project-one" ]] || exit 2
+        [[ "$(list_central_venvs)" == "project-one" ]] || exit 3
+
+        deactivate
+        activate_central_venv project-one >/dev/null
+        [[ "$VIRTUAL_ENV" == "$HOME/.venvs/project-one" ]] || exit 4
+    ' || fail "central venv helpers should create, activate, and list project venvs"
+}
+
+test_auto_activate_central_venv_switches_and_deactivates() {
+    with_temp_env '
+        make_fake_venv() {
+            local target="$1"
+            mkdir -p "$target/bin"
+            cat > "$target/bin/activate" <<ACTIVATE
+VIRTUAL_ENV="$target"
+export VIRTUAL_ENV
+deactivate() {
+    unset VIRTUAL_ENV
+    unset CENTRAL_VENV_AUTO_ACTIVATED
+    unset -f deactivate
+}
+ACTIVATE
+        }
+
+        mkdir -p "$HOME/project-a" "$HOME/project-b"
+        make_fake_venv "$HOME/.venvs/project-a"
+        make_fake_venv "$HOME/.venvs/project-b"
+
+        source "$BASHRC" >/dev/null 2>&1
+        [[ "$PROMPT_COMMAND" == *"auto_activate_central_venv"* ]] || exit 1
+
+        cd "$HOME/project-a"
+        auto_activate_central_venv
+        [[ "$VIRTUAL_ENV" == "$HOME/.venvs/project-a" ]] || exit 2
+        [[ "$CENTRAL_VENV_AUTO_ACTIVATED" == "1" ]] || exit 3
+
+        cd "$HOME/project-b"
+        auto_activate_central_venv
+        [[ "$VIRTUAL_ENV" == "$HOME/.venvs/project-b" ]] || exit 4
+
+        cd "$HOME"
+        auto_activate_central_venv
+        [[ -z "${VIRTUAL_ENV:-}" ]] || exit 5
+        [[ -z "${CENTRAL_VENV_AUTO_ACTIVATED:-}" ]] || exit 6
+    ' || fail "auto activation should switch project venvs and deactivate outside projects"
+}
+
+test_auto_activate_central_venv_preserves_manual_venv() {
+    with_temp_env '
+        make_fake_venv() {
+            local target="$1"
+            mkdir -p "$target/bin"
+            cat > "$target/bin/activate" <<ACTIVATE
+VIRTUAL_ENV="$target"
+export VIRTUAL_ENV
+deactivate() {
+    unset VIRTUAL_ENV
+    unset -f deactivate
+}
+ACTIVATE
+        }
+
+        mkdir -p "$HOME/project-a"
+        make_fake_venv "$HOME/.venvs/project-a"
+        make_fake_venv "$TEST_TMPDIR/manual-venv"
+
+        source "$BASHRC" >/dev/null 2>&1
+        source "$TEST_TMPDIR/manual-venv/bin/activate"
+
+        cd "$HOME/project-a"
+        auto_activate_central_venv
+        [[ "$VIRTUAL_ENV" == "$TEST_TMPDIR/manual-venv" ]] || exit 1
+        [[ -z "${CENTRAL_VENV_AUTO_ACTIVATED:-}" ]] || exit 2
+    ' || fail "auto activation should not replace a manually activated venv"
+}
+
 test_source_is_quiet_and_preserves_directory
 test_ek_without_configs_has_no_basename_error
 test_reposync_does_not_rewrite_source_files
+test_central_venv_helpers_create_activate_and_list
+test_auto_activate_central_venv_switches_and_deactivates
+test_auto_activate_central_venv_preserves_manual_venv
 
 echo "All my_bashrc tests passed"

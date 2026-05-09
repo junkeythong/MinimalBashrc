@@ -37,6 +37,7 @@ The custom prompt displays contextual information:
 - **Repository Sync**: `reposync` for main→test repo synchronization
 - **Quick Navigation**: `cd1`, `cd2` for frequent directories
 - **Bashrc Management**: `editbash`, `sourcebash` for quick config changes
+- **Central Python venvs**: per-project virtualenvs in `~/.venvs` with automatic activation
 - **System Monitoring**: Docker and screen session counters
 
 ## 📋 Function Reference
@@ -68,6 +69,18 @@ cd2                 # Navigate to test repository
 editbash            # Edit bashrc file
 sourcebash          # Reload bashrc configuration
 ```
+
+### Python Virtualenv Functions
+```bash
+create_central_venv [name]    # Create and activate ~/.venvs/<name>
+activate_central_venv <name>  # Activate an existing central venv
+list_central_venvs            # List central venvs
+central_venv_path [name]      # Print the central venv path
+```
+
+When a matching central venv exists, entering `~/project-name` automatically activates
+`~/.venvs/project-name`. Leaving the project deactivates only venvs that were
+auto-activated.
 
 ### Useful Aliases
 ```bash
@@ -131,6 +144,15 @@ cp, mv, rm          # Interactive mode by default (-i)
    kinit_ns
    ```
 
+7. **Optional: create central Python virtualenvs**:
+   ```bash
+   cd ~/my-python-project
+   create_central_venv
+   python -m pip install -r requirements.txt
+   ```
+
+   After the venv exists, future `cd ~/my-python-project` commands auto-activate it.
+
 ## 🖥️ Terminal Screenshots
 
 Demo from terminal on macOS:
@@ -175,6 +197,7 @@ Feel free to suggest improvements or report issues. This configuration prioritiz
 - Some functions assume specific directory structures
 - The prompt updates dynamically on each command
 - Sourcing the file is passive: it does not create Kubernetes resources or change directories
+- Central Python venv activation is passive: it only activates existing `~/.venvs/<project>` environments and never creates them automatically
 
 ---
 
